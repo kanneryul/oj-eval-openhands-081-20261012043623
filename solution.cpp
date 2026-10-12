@@ -5,118 +5,57 @@
 
 using namespace std;
 
-class MaxFlow {
-private:
-    struct Edge {
-        int to, cap, rev;
-        Edge(int t, int c, int r) : to(t), cap(c), rev(r) {}
-    };
+int find_disjoint_paths(int n, const vector<pair<int, int>>& edges, int s, int t) {
+    // Build adjacency list
+    vector<vector<int>> adj(n);
+    vector<vector<bool>> edge_used(n, vector<bool>(n, false));
     
-    vector<vector<Edge>> graph;
-    vector<int> level, iter;
-    vector<bool> visited;
-    int n;
+    for (const auto& e : edges) {
+        adj[e.first].push_back(e.second);
+        adj[e.second].push_back(e.first);
+    }
     
-    bool bfs(int s, int t) {
-        level.assign(n, -1);
+    int paths = 0;
+    
+    // Try to find up to 3 edge-disjoint paths
+    for (int attempt = 0; attempt < 3; attempt++) {
         queue<int> q;
-        level[s] = 0;
-        q.push(s);
+        vector<int> parent(n, -1);
+        vector<pair<int, int>> path_edges;
         
-        while (!q.empty()) {
+        q.push(s);
+        parent[s] = s;
+        
+        // BFS to find path
+        while (!q.empty() && parent[t] == -1) {
             int v = q.front();
             q.pop();
-            for (const Edge& e : graph[v]) {
-                if (e.cap > 0 && level[e.to] < 0) {
-                    level[e.to] = level[v] + 1;
-                    q.push(e.to);
-                }
-            }
-        }
-        return level[t] >= 0;
-    }
-    
-    int dfs(int v, int t, int f) {
-        if (v == t) return f;
-        for (int& i = iter[v]; i < graph[v].size(); i++) {
-            Edge& e = graph[v][i];
-            if (e.cap > 0 && level[v] < level[e.to]) {
-                int d = dfs(e.to, t, min(f, e.cap));
-                if (d > 0) {
-                    e.cap -= d;
-                    graph[e.to][e.rev].cap += d;
-                    return d;
-                }
-            }
-        }
-        return 0;
-    }
-    
-    // Simple DFS for finding augmenting paths (Ford-Fulkerson style)
-    int find_path(int v, int t, vector<bool>& used) {
-        if (v == t) return 1;
-        used[v] = true;
-        for (Edge& e : graph[v]) {
-            if (e.cap > 0 && !used[e.to]) {
-                if (find_path(e.to, t, used)) {
-                    e.cap--;
-                    graph[e.to][e.rev].cap++;
-                    return 1;
-                }
-            }
-        }
-        return 0;
-    }
-    
-public:
-    MaxFlow(int size) : n(size) {
-        graph.resize(n);
-        level.resize(n);
-        iter.resize(n);
-        visited.resize(n);
-    }
-    
-    void clear() {
-        for (int i = 0; i < n; i++) {
-            graph[i].clear();
-        }
-    }
-    
-    void add_edge(int from, int to, int cap) {
-        graph[from].emplace_back(to, cap, graph[to].size());
-        graph[to].emplace_back(from, 0, graph[from].size() - 1);
-    }
-    
-    int max_flow(int s, int t) {
-        int flow = 0;
-        
-        // Try simple DFS first (faster for small flows)
-        for (int i = 0; i < 3; i++) {
-            visited.assign(n, false);
-            if (find_path(s, t, visited)) {
-                flow++;
-                if (flow >= 3) return flow;
-            } else {
-                break;
-            }
-        }
-        
-        // If we still need more flow, use Dinic
-        if (flow < 3) {
-            while (bfs(s, t)) {
-                iter.assign(n, 0);
-                while (true) {
-                    int f = dfs(s, t, 1);
-                    if (f == 0) break;
-                    flow += f;
-                    if (flow >= 3) return flow;
+            
+            for (int u : adj[v]) {
+                if (parent[u] == -1 && !edge_used[min(v, u)][max(v, u)]) {
+                    parent[u] = v;
+                    q.push(u);
+                    if (u == t) break;
                 }
             }
         }
         
-        return flow;
+        // If no path found, we're done
+        if (parent[t] == -1) break;
+        
+        // Reconstruct path and mark edges as used
+        int current = t;
+        while (current != s) {
+            int prev = parent[current];
+            edge_used[min(prev, current)][max(prev, current)] = true;
+            current = prev;
+        }
+        
+        paths++;
     }
-};
+    
+    return paths;
+}
 
 int main() {
     ios_base::sync_with_stdio(false);
@@ -142,16 +81,10 @@ int main() {
     }
     
     long long total = 0;
-    MaxFlow maxflow(n);
     
     for (int a = 0; a < n; a++) {
         for (int b = a + 1; b < n; b++) {
-            maxflow.clear();
-            for (const auto& e : edges) {
-                maxflow.add_edge(e.first, e.second, 1);
-                maxflow.add_edge(e.second, e.first, 1);
-            }
-            int flow = maxflow.max_flow(a, b);
+            int flow = find_disjoint_paths(n, edges, a, b);
             total += flow;
         }
     }
