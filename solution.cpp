@@ -90,13 +90,20 @@ int main() {
     int n, m;
     cin >> n >> m;
     
+    if (n == 0) {
+        cout << 0 << endl;
+        return 0;
+    }
+    
     vector<pair<int, int>> edges;
     for (int i = 0; i < m; i++) {
         int a, b;
         cin >> a >> b;
         a--;
         b--;
-        edges.emplace_back(a, b);
+        if (a != b) {
+            edges.emplace_back(a, b);
+        }
     }
     
     long long total = 0;
