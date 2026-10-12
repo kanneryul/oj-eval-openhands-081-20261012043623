@@ -5,7 +5,7 @@
 
 using namespace std;
 
-class Dinic {
+class MaxFlow {
 private:
     struct Edge {
         int to, cap, rev;
@@ -14,9 +14,10 @@ private:
     
     vector<vector<Edge>> graph;
     vector<int> level, iter;
+    int n;
     
     bool bfs(int s, int t) {
-        level.assign(graph.size(), -1);
+        level.assign(n, -1);
         queue<int> q;
         level[s] = 0;
         q.push(s);
@@ -51,7 +52,16 @@ private:
     }
     
 public:
-    Dinic(int n) : graph(n), level(n), iter(n) {}
+    MaxFlow(int size) : n(size) {
+        graph.resize(n);
+        level.resize(n);
+        iter.resize(n);
+    }
+    
+    void clear() {
+        graph.clear();
+        graph.resize(n);
+    }
     
     void add_edge(int from, int to, int cap) {
         graph[from].emplace_back(to, cap, graph[to].size());
@@ -61,11 +71,12 @@ public:
     int max_flow(int s, int t) {
         int flow = 0;
         while (bfs(s, t)) {
-            iter.assign(graph.size(), 0);
+            iter.assign(n, 0);
             while (true) {
                 int f = dfs(s, t, 1);
                 if (f == 0) break;
                 flow += f;
+                if (flow >= 3) return flow; // Early termination since max degree is 3
             }
         }
         return flow;
@@ -89,15 +100,16 @@ int main() {
     }
     
     long long total = 0;
+    MaxFlow maxflow(n);
     
     for (int a = 0; a < n; a++) {
         for (int b = a + 1; b < n; b++) {
-            Dinic dinic(n);
+            maxflow.clear();
             for (const auto& e : edges) {
-                dinic.add_edge(e.first, e.second, 1);
-                dinic.add_edge(e.second, e.first, 1);
+                maxflow.add_edge(e.first, e.second, 1);
+                maxflow.add_edge(e.second, e.first, 1);
             }
-            int flow = dinic.max_flow(a, b);
+            int flow = maxflow.max_flow(a, b);
             total += flow;
         }
     }
