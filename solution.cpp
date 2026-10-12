@@ -14,6 +14,7 @@ private:
     
     vector<vector<Edge>> graph;
     vector<int> level, iter;
+    vector<bool> visited;
     int n;
     
     bool bfs(int s, int t) {
@@ -51,16 +52,34 @@ private:
         return 0;
     }
     
+    // Simple DFS for finding augmenting paths (Ford-Fulkerson style)
+    int find_path(int v, int t, vector<bool>& used) {
+        if (v == t) return 1;
+        used[v] = true;
+        for (Edge& e : graph[v]) {
+            if (e.cap > 0 && !used[e.to]) {
+                if (find_path(e.to, t, used)) {
+                    e.cap--;
+                    graph[e.to][e.rev].cap++;
+                    return 1;
+                }
+            }
+        }
+        return 0;
+    }
+    
 public:
     MaxFlow(int size) : n(size) {
         graph.resize(n);
         level.resize(n);
         iter.resize(n);
+        visited.resize(n);
     }
     
     void clear() {
-        graph.clear();
-        graph.resize(n);
+        for (int i = 0; i < n; i++) {
+            graph[i].clear();
+        }
     }
     
     void add_edge(int from, int to, int cap) {
@@ -70,15 +89,31 @@ public:
     
     int max_flow(int s, int t) {
         int flow = 0;
-        while (bfs(s, t)) {
-            iter.assign(n, 0);
-            while (true) {
-                int f = dfs(s, t, 1);
-                if (f == 0) break;
-                flow += f;
-                if (flow >= 3) return flow; // Early termination since max degree is 3
+        
+        // Try simple DFS first (faster for small flows)
+        for (int i = 0; i < 3; i++) {
+            visited.assign(n, false);
+            if (find_path(s, t, visited)) {
+                flow++;
+                if (flow >= 3) return flow;
+            } else {
+                break;
             }
         }
+        
+        // If we still need more flow, use Dinic
+        if (flow < 3) {
+            while (bfs(s, t)) {
+                iter.assign(n, 0);
+                while (true) {
+                    int f = dfs(s, t, 1);
+                    if (f == 0) break;
+                    flow += f;
+                    if (flow >= 3) return flow;
+                }
+            }
+        }
+        
         return flow;
     }
 };
